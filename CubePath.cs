@@ -1,16 +1,30 @@
 using UnityEngine;
 
-public class CubePathContinuousControl : MonoBehaviour
+public class CubePathAndFreeMove : MonoBehaviour
 {
     public Transform cube; // Assign the cube object here
     public Transform[] checkpoints; // Assign checkpoint positions in the Inspector
-    public float moveSpeed = 2f; // Speed of movement
+    public float pathMoveSpeed = 2f; // Speed of movement along the path
+    public float freeMoveSpeed = 5f; // Speed of free movement
     private int currentCheckpoint = 0; // Index of the current checkpoint
-    private float progress = 0f; // Tracks the progress between checkpoints (0 to 1)
+    private float progress = 0f; // Tracks progress between checkpoints (0 to 1)
+    private bool atEnd = false; // Flag to indicate if the cube has reached the end
 
     void Update()
     {
-        // Ensure there are checkpoints to follow
+        if (atEnd)
+        {
+            HandleFreeMovement();
+        }
+        else
+        {
+            FollowPath();
+        }
+    }
+
+    // Handles movement along the path
+    void FollowPath()
+    {
         if (checkpoints.Length < 2 || cube == null)
             return;
 
@@ -21,18 +35,25 @@ public class CubePathContinuousControl : MonoBehaviour
         // Move forward with W
         if (Input.GetKey(KeyCode.W))
         {
-            progress += moveSpeed * Time.deltaTime;
+            progress += pathMoveSpeed * Time.deltaTime;
             if (progress >= 1f)
             {
                 progress = 0f;
-                currentCheckpoint = Mathf.Min(currentCheckpoint + 1, checkpoints.Length - 2); // Clamp to avoid out-of-bounds
+                currentCheckpoint++;
+
+                // If the cube reaches the last checkpoint, enable free movement
+                if (currentCheckpoint >= checkpoints.Length - 1)
+                {
+                    atEnd = true;
+                    return;
+                }
             }
         }
 
         // Move backward with S
         if (Input.GetKey(KeyCode.S))
         {
-            progress -= moveSpeed * Time.deltaTime;
+            progress -= pathMoveSpeed * Time.deltaTime;
             if (progress <= 0f)
             {
                 progress = 1f;
@@ -42,6 +63,29 @@ public class CubePathContinuousControl : MonoBehaviour
 
         // Interpolate the cube's position
         cube.position = Vector3.Lerp(startCheckpoint.position, targetCheckpoint.position, Mathf.Clamp01(progress));
+    }
+
+    // Handles free movement in 3D space with WASD
+    void HandleFreeMovement()
+    {
+        Vector3 direction = Vector3.zero;
+
+        if (Input.GetKey(KeyCode.W))
+            direction += Vector3.forward; // Move forward
+        if (Input.GetKey(KeyCode.S))
+            direction += Vector3.back; // Move backward
+        if (Input.GetKey(KeyCode.A))
+            direction += Vector3.left; // Move left
+        if (Input.GetKey(KeyCode.D))
+            direction += Vector3.right; // Move right
+        if (Input.GetKey(KeyCode.Space))
+            direction += Vector3.up; // Move upward
+        if (Input.GetKey(KeyCode.LeftShift))
+            direction += Vector3.down; // Move downward
+
+        // Normalize the direction and move the cube
+        direction = direction.normalized;
+        cube.position += direction * freeMoveSpeed * Time.deltaTime;
     }
 
     void OnDrawGizmos()
